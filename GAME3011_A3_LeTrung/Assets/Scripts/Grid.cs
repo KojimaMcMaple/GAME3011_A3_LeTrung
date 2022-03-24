@@ -67,7 +67,7 @@ public class Grid<T>
         OnGridObjectChanged?.Invoke(this, new OnGridObjectChangedEventArgs { x = x, y = y });
     }
 
-    private Vector3 GetWorldPos(int x, int y) //GetCellWorldPos
+    public Vector3 GetWorldPos(int x, int y) //GetCellWorldPos
     {
         return new Vector3(x, y) * cell_size_ + origin_;
     }
@@ -117,6 +117,17 @@ public class Grid<T>
         return GetValue(coords.x, coords.y);
     }
 
+    public int GetWidth()
+    {
+        return width_;
+    }
+
+    public int GetHeight()
+    {
+        return height_;
+    }
+
+    // DEBUG
     public static TextMesh CreateWorldText(string text, Transform parent = null, Vector3 local_pos = default(Vector3), int font_size = 40, Color? color = null, TextAnchor text_anchor = TextAnchor.UpperLeft, TextAlignment text_align = TextAlignment.Left, int sort_order = 5000)
     {
         if (color == null)
