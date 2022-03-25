@@ -72,7 +72,7 @@ public class Grid<T>
         return new Vector3(x, y) * cell_size_ + origin_;
     }
 
-    private Vector2Int GetGridCoords(Vector3 world_pos)
+    public Vector2Int GetGridCoords(Vector3 world_pos)
     {
         int x = Mathf.FloorToInt((world_pos.x - origin_.x) / cell_size_);
         int y = Mathf.FloorToInt((world_pos.y - origin_.y) / cell_size_);
@@ -81,7 +81,7 @@ public class Grid<T>
 
     public void SetValue(int x, int y, T value) //SetCellValue
     {
-        if (x<0 || y<0 || x>=width_ && y>=height_)
+        if (x<0 || y<0 || x>=width_ || y>=height_)
         {
             return;
         }
@@ -101,7 +101,7 @@ public class Grid<T>
 
     public T GetValue(int x, int y)
     {
-        if (x < 0 || y < 0 || x >= width_ && y >= height_)
+        if (x < 0 || y < 0 || x >= width_ || y >= height_)
         {
             return default(T); //C# default value of type T
         }

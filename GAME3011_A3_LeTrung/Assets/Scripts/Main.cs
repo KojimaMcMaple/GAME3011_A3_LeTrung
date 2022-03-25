@@ -9,6 +9,7 @@ public class Main : MonoBehaviour
     private int width_;
     private int height_;
     [SerializeField] private List<GemSO> gem_so_list_;
+    public List<GridCell> processing_list;
 
     private void Awake()
     {
@@ -31,6 +32,183 @@ public class Main : MonoBehaviour
     public Grid<GridCell> GetMainGrid()
     {
         return grid_;
+    }
+
+    private bool IsValidCoords(int x, int y)
+    {
+        if (x < 0 || y < 0 || x >= width_ || y >= height_)
+        {
+            return false;
+        }
+        return true;
+    }
+
+    public void SwapGridCells(int start_x, int start_y, int dest_x, int dest_y)
+    {
+        if (!IsValidCoords(start_x, start_y) || !IsValidCoords(dest_x, dest_y)) 
+        {
+            return;
+        }
+        if (start_x == dest_x && start_y == dest_y)
+        {
+            return;
+        }
+
+        GridCell start_cell = grid_.GetValue(start_x, start_y);
+        GridCell dest_cell = grid_.GetValue(dest_x, dest_y);
+        Gem start_gem = start_cell.GetCellItem();
+        Gem dest_gem = dest_cell.GetCellItem();
+
+        start_gem.SetGemCoords(dest_x, dest_y);
+        dest_gem.SetGemCoords(start_x, start_y);
+        start_cell.SetCellItem(dest_gem);
+        dest_cell.SetCellItem(start_gem);
+    }
+
+    public bool TrySwapGridCells(int start_x, int start_y, int dest_x, int dest_y)
+    {
+        if (!IsValidCoords(start_x, start_y) || !IsValidCoords(dest_x, dest_y))
+        {
+            return false;
+        }
+        if (start_x == dest_x && start_y == dest_y)
+        {
+            return false;
+        }
+        if (GetGemSOAtCoords(start_x, start_y) == GetGemSOAtCoords(dest_x, dest_y))
+        {
+            return false;
+        }
+
+        SwapGridCells(start_x, start_y, dest_x, dest_y);
+        bool has_match = HasMatch(start_x, start_y) || HasMatch(dest_x, dest_y);
+        if (!has_match)
+        {
+            SwapGridCells(start_x, start_y, dest_x, dest_y);
+        }
+
+        return has_match;
+    }
+
+    public bool HasMatch(int x, int y)
+    {
+        List<GridCell> result = GetMatchesAtCoords(x, y);
+        return result != null && result.Count > 2;
+    }
+
+    private GemSO GetGemSOAtCoords(int x, int y)
+    {
+        if (!IsValidCoords(x, y))
+        {
+            return null;
+        }
+        GridCell cell = grid_.GetValue(x, y);
+        return cell.GetCellItem().GetGemSO();
+    }
+
+    public List<GridCell> GetMatchesAtCoords(int x, int y)
+    {
+        GemSO gem_so = GetGemSOAtCoords(x, y);
+        if (gem_so == null)
+        {
+            return null;
+        }
+
+        // RIGHT
+        int matches_right = 0;
+        for (int i = 1; i < width_; i++)
+        {
+            if (!IsValidCoords(x + i, y))
+            {
+                break;
+            }
+            GemSO next_gem_so = GetGemSOAtCoords(x + i, y);
+            if (next_gem_so != gem_so)
+            {
+                break;
+            }
+            matches_right++;
+        }
+
+
+        // LEFT
+        int matches_left = 0;
+        for (int i = 1; i < width_; i++)
+        {
+            if (!IsValidCoords(x - i, y))
+            {
+                break;
+            }
+            GemSO next_gem_so = GetGemSOAtCoords(x - i, y);
+            if (next_gem_so != gem_so)
+            {
+                break;
+            }
+            matches_left++;
+        }
+
+        // UP
+        int matches_up = 0;
+        for (int i = 1; i < height_; i++)
+        {
+            if (!IsValidCoords(x, y + i))
+            {
+                break;
+            }
+            GemSO next_gem_so = GetGemSOAtCoords(x, y + i);
+            if (next_gem_so != gem_so)
+            {
+                break;
+            }
+            matches_up++;
+        }
+
+        // DOWN
+        int matches_down = 0;
+        for (int i = 1; i < height_; i++)
+        {
+            if (!IsValidCoords(x, y - i))
+            {
+                break;
+            }
+            GemSO next_gem_so = GetGemSOAtCoords(x, y - i);
+            if (next_gem_so != gem_so)
+            {
+                break;
+            }
+            matches_down++;
+        }
+
+        int matches_horizontal = 1 + matches_right + matches_left;
+        int matches_vertical = 1 + matches_up + matches_down;
+        List < GridCell > result = new List < GridCell >(); 
+        if (matches_horizontal > 2)
+        {
+            int bound_left = x - matches_left;
+            for (int i = 0; i < matches_horizontal; i++)
+            {
+                if (bound_left + i != x)
+                {
+                    result.Add(grid_.GetValue(bound_left + i, y));
+                }
+            }
+        }
+        if (matches_vertical > 2)
+        {
+            int bound_down = y - matches_down;
+            for (int i = 0; i < matches_vertical; i++)
+            {
+                if (bound_down + i != y)
+                {
+                    result.Add(grid_.GetValue(x, bound_down + i));
+                }
+            }
+        }
+        if (result.Count != 0)
+        {
+            result.Add(grid_.GetValue(x, y));
+        }
+        return result;
     }
 
 
@@ -59,6 +237,11 @@ public class Main : MonoBehaviour
         {
             cell_item_ = cell_item;
             grid_.DoTriggerGridObjChanged(x_, y_);
+        }
+
+        public Grid<GridCell> GetGrid()
+        {
+            return grid_;
         }
 
         public int GetX()
@@ -96,7 +279,7 @@ public class Main : MonoBehaviour
             is_dead_ = false;
         }
 
-        public GemSO GetGem()
+        public GemSO GetGemSO()
         {
             return gem_;
         }
@@ -108,8 +291,8 @@ public class Main : MonoBehaviour
 
         public void SetGemCoords(int x, int y)
         {
-            this.x_ = x;
-            this.y_ = y;
+            x_ = x;
+            y_ = y;
         }
 
         public void Destroy()
