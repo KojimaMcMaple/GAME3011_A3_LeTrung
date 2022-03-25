@@ -38,7 +38,7 @@ public class Grid<T>
         }
 
         // DEBUG
-        bool is_debug = true;
+        bool is_debug = false;
         if (is_debug)
         {
             TextMesh[,] debug_text_arr = new TextMesh[width, height];

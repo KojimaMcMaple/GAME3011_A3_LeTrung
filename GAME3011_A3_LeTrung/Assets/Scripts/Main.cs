@@ -8,6 +8,7 @@ public class Main : MonoBehaviour
     private Grid<GridCell> grid_;
     private int width_;
     private int height_;
+    [SerializeField] private List<GemSO> gem_so_list_;
 
     private void Awake()
     {
@@ -15,6 +16,16 @@ public class Main : MonoBehaviour
         height_ = 10;
         grid_ = new Grid<GridCell>(width_, height_, 1f, Vector3.zero, 
             (Grid<GridCell> grid_, int x, int y) => new GridCell(grid_,x,y));
+
+        for (int x = 0; x < width_; x++)
+        {
+            for (int y = 0; y < height_; y++)
+            {
+                GemSO gem_so = gem_so_list_[UnityEngine.Random.Range(0, gem_so_list_.Count)];
+                Gem gem = new Gem(gem_so, x, y);
+                grid_.GetValue(x,y).SetCellItem(gem);
+            }
+        }
     }
 
     public Grid<GridCell> GetMainGrid()
