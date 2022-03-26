@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 
 public class View : MonoBehaviour
 {
@@ -21,8 +22,13 @@ public class View : MonoBehaviour
     private int dest_drag_x_;
     private int dest_drag_y_;
 
+    [SerializeField] private TMP_Text level_txt_;
+    [SerializeField] private TMP_Text timer_txt_;
+    [SerializeField] private TMP_Text score_txt_;
+
     private Action OnEndBusyAction;
 
+    private AudioSource audio_;
     private VfxManager vfx_manager_;
 
     public enum State
@@ -36,6 +42,7 @@ public class View : MonoBehaviour
     private void Awake()
     {
         cam_ = Camera.main.transform;
+        audio_ = GetComponent<AudioSource>();
         vfx_manager_ = FindObjectOfType<VfxManager>();
     }
 
@@ -43,6 +50,9 @@ public class View : MonoBehaviour
     {
         state_ = State.kBusy;
         Init(FindObjectOfType<Main>(), FindObjectOfType<Main>().GetMainGrid());
+
+        model_.OnScoreChanged += HandleScoreChangedEvent;
+        model_.OnTimerChanged += HandleTimerChangedEvent;
     }
 
     private void Update()
@@ -125,8 +135,11 @@ public class View : MonoBehaviour
                 }
                 else
                 {
-                    SetBusyState(0.5f, () => state_ = (State.kAvailable));
+                    //SetBusyState(0.5f, () => state_ = (State.kAvailable));
+                    TryReturnToAvailableState();
                 }
+                break;
+            case State.kGameOver:
                 break;
         }
     }
@@ -155,7 +168,6 @@ public class View : MonoBehaviour
                 Instantiate(cell_visual_template_, grid_.GetWorldPos(x, y), Quaternion.identity);
             }
         }
-
         SetBusyState(0.5f, () => state_ = State.kProcessing);
     }
 
@@ -171,10 +183,13 @@ public class View : MonoBehaviour
         position = new Vector3(position.x, start_pos_y_); //move gem way up at the start
 
         Transform scene_gem = Instantiate(gem_visual_template_, position, Quaternion.identity);
-        scene_gem.Find("Sprite").GetComponent<SpriteRenderer>().sprite = gem.GetGemSO().prefab_.GetComponent<SpriteRenderer>().sprite;
-        scene_gem.Find("Sprite").GetComponent<SpriteRenderer>().material = gem.GetGemSO().prefab_.GetComponent<SpriteRenderer>().sharedMaterial;
-        scene_gem.Find("Sprite").GetComponent<Animator>().runtimeAnimatorController = gem.GetGemSO().prefab_.GetComponent<Animator>().runtimeAnimatorController;
-
+        scene_gem.Find("Sprite").GetComponent<SpriteRenderer>().sprite = gem.GetGemSO().prefab.GetComponent<SpriteRenderer>().sprite;
+        scene_gem.Find("Sprite").GetComponent<SpriteRenderer>().material = gem.GetGemSO().prefab.GetComponent<SpriteRenderer>().sharedMaterial;
+        if (scene_gem.Find("Sprite").GetComponent<Animator>().runtimeAnimatorController != null)
+        {
+            scene_gem.Find("Sprite").GetComponent<Animator>().runtimeAnimatorController = gem.GetGemSO().prefab.GetComponent<Animator>().runtimeAnimatorController;
+        }
+        
         GemVisual gem_visual = new GemVisual(scene_gem, gem);
 
         gem_dict_[gem] = gem_visual;
@@ -204,6 +219,17 @@ public class View : MonoBehaviour
         SetBusyState(0.5f, () => state_ = State.kProcessing);
     }
 
+    private void TryReturnToAvailableState()
+    {
+        if (model_.GetScore() >= 10000)
+        {
+            state_ = State.kGameOver;
+        }
+        else
+        {
+            state_ = State.kAvailable;
+        }
+    }
 
     private void HandleGridCellDestroyedEvent(object sender, System.EventArgs e)
     {
@@ -217,6 +243,17 @@ public class View : MonoBehaviour
     private void HandleNewGemsSpawnedEvent(object sender, Main.OnNewGemSpawnedEventArgs e)
     {
         CreateGemVisualAtWorldPos(e.cell.GetWorldPos(), e.gem);
+    }
+
+    private void HandleScoreChangedEvent(object sender, System.EventArgs e)
+    {
+        score_txt_.text = "Score: " + model_.GetScore().ToString();
+        audio_.PlayOneShot(audio_.clip);
+    }
+
+    private void HandleTimerChangedEvent(object sender, System.EventArgs e)
+    {
+        timer_txt_.text = "Timer: " + model_.GetTimer().ToString();
     }
 
 

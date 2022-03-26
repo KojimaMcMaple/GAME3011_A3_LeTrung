@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8d62daf66bc773449c97840ba40e479, type: 3}
   m_Name: GemHeart
   m_EditorClassIdentifier: 
-  name_: GemHeart
-  prefab_: {fileID: 302871036896878358, guid: b8e5bacd16d949d49a210d476aeecd50, type: 3}
-  sprite_: {fileID: 0}
-  mat_: {fileID: 0}
-  anim_: {fileID: 0}
+  gem_name: Heart
+  prefab: {fileID: 302871036896878358, guid: b8e5bacd16d949d49a210d476aeecd50, type: 3}
+  sprite: {fileID: 0}
+  mat: {fileID: 0}
+  anim: {fileID: 0}
+  is_immovable: 0

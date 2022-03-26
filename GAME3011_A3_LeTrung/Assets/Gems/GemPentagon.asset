@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8d62daf66bc773449c97840ba40e479, type: 3}
   m_Name: GemPentagon
   m_EditorClassIdentifier: 
-  name_: GemPent
-  prefab_: {fileID: 4695287722659942386, guid: 21bd5a1b0e29a0e4bb3056fb4cc410b5, type: 3}
-  sprite_: {fileID: 0}
-  mat_: {fileID: 0}
-  anim_: {fileID: 0}
+  gem_name: Pent
+  prefab: {fileID: 4695287722659942386, guid: 21bd5a1b0e29a0e4bb3056fb4cc410b5, type: 3}
+  sprite: {fileID: 0}
+  mat: {fileID: 0}
+  anim: {fileID: 0}
+  is_immovable: 0

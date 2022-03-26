@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8d62daf66bc773449c97840ba40e479, type: 3}
   m_Name: GemStar
   m_EditorClassIdentifier: 
-  name_: GemStar
-  prefab_: {fileID: 302533809501020329, guid: 3c2a610474da26d46b6ea82a214edbfb, type: 3}
-  sprite_: {fileID: 0}
-  mat_: {fileID: 0}
-  anim_: {fileID: 0}
+  gem_name: Star
+  prefab: {fileID: 302533809501020329, guid: 3c2a610474da26d46b6ea82a214edbfb, type: 3}
+  sprite: {fileID: 0}
+  mat: {fileID: 0}
+  anim: {fileID: 0}
+  is_immovable: 0

@@ -5,9 +5,10 @@ using UnityEngine;
 [CreateAssetMenu()]
 public class GemSO : ScriptableObject
 {
-    public string name_;
-    public GameObject prefab_;
-    public Sprite sprite_;
-    public Material mat_;
-    public Animator anim_;
+    public string gem_name;
+    public GameObject prefab;
+    public Sprite sprite;
+    public Material mat;
+    public Animator anim;
+    public bool is_immovable = false;
 }

@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8d62daf66bc773449c97840ba40e479, type: 3}
   m_Name: GemRectangle
   m_EditorClassIdentifier: 
-  name_: GemRect
-  prefab_: {fileID: 8375709489895229631, guid: c2ab52a50a2e8ed47a89c126da19d083, type: 3}
-  sprite_: {fileID: 0}
-  mat_: {fileID: 0}
-  anim_: {fileID: 0}
+  gem_name: Rect
+  prefab: {fileID: 8375709489895229631, guid: c2ab52a50a2e8ed47a89c126da19d083, type: 3}
+  sprite: {fileID: 0}
+  mat: {fileID: 0}
+  anim: {fileID: 0}
+  is_immovable: 0

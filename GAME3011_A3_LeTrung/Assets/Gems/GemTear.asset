@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8d62daf66bc773449c97840ba40e479, type: 3}
   m_Name: GemTear
   m_EditorClassIdentifier: 
-  name_: GemTear
-  prefab_: {fileID: 3580059776207905197, guid: bfec4348ea053ca46847ecae4a333788, type: 3}
-  sprite_: {fileID: 0}
-  mat_: {fileID: 0}
-  anim_: {fileID: 0}
+  gem_name: Tear
+  prefab: {fileID: 3580059776207905197, guid: bfec4348ea053ca46847ecae4a333788, type: 3}
+  sprite: {fileID: 0}
+  mat: {fileID: 0}
+  anim: {fileID: 0}
+  is_immovable: 0

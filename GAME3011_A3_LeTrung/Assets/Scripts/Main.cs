@@ -8,6 +8,8 @@ public class Main : MonoBehaviour
 {
     public event EventHandler OnGridCellDestroyed; //event to send command from model to view
     public event EventHandler<OnNewGemSpawnedEventArgs> OnNewGemSpawned; //event to send command from model to view
+    public event EventHandler OnScoreChanged;
+    public event EventHandler OnTimerChanged;
 
     public class OnNewGemSpawnedEventArgs : EventArgs
     {
@@ -22,6 +24,9 @@ public class Main : MonoBehaviour
     private List<GridCell> processing_list_;
 
     private int score_;
+    private float timer_ = 360f;
+    private int max_immoveables_ = 5;
+    private int num_immoveables_ = 0;
 
     private void Awake()
     {
@@ -34,18 +39,49 @@ public class Main : MonoBehaviour
         {
             for (int y = 0; y < height_; y++)
             {
-                GemSO gem_so = gem_so_list_[UnityEngine.Random.Range(0, gem_so_list_.Count)];
+                int max_count = gem_so_list_.Count;
+                if (num_immoveables_ >= max_immoveables_)
+                {
+                    max_count -= 1;
+                }
+                int idx = UnityEngine.Random.Range(0, max_count);
+                if (num_immoveables_ < max_immoveables_)
+                {
+                    if (idx == gem_so_list_.Count-1)
+                    {
+                        num_immoveables_++;
+                    }
+                }
+                GemSO gem_so = gem_so_list_[idx];
                 Gem gem = new Gem(gem_so, x, y);
                 grid_.GetValue(x,y).SetCellItem(gem);
             }
         }
-
         score_ = 0;
+    }
+
+    private void FixedUpdate()
+    {
+        if (timer_ > 0)
+        {
+            timer_ -= Time.deltaTime;
+            OnTimerChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     public Grid<GridCell> GetMainGrid()
     {
         return grid_;
+    }
+
+    public int GetScore()
+    {
+        return score_;
+    }
+
+    public float GetTimer()
+    {
+        return timer_;
     }
 
     private bool IsValidCoords(int x, int y)
@@ -109,6 +145,10 @@ public class Main : MonoBehaviour
         {
             return false;
         }
+        if (GetGemSOAtCoords(start_x, start_y).is_immovable || GetGemSOAtCoords(dest_x, dest_y).is_immovable)
+        {
+            return false;
+        }
 
         SwapGridCells(start_x, start_y, dest_x, dest_y);
         bool has_match = HasMatch(start_x, start_y) || HasMatch(dest_x, dest_y);
@@ -142,14 +182,16 @@ public class Main : MonoBehaviour
     public bool TryProcessAllMatches()
     {
         processing_list_ = new List<GridCell>();
-
         for (int x = 0; x < width_; x++)
         {
             for (int y = 0; y < height_; y++)
             {
                 List<GridCell> list1 = GetMatchesAtCoords(x, y);
-                List<GridCell> list2 = processing_list_;
-                processing_list_ = list1.Union(list2).ToList();
+                if (list1 != null)
+                {
+                    List<GridCell> list2 = processing_list_;
+                    processing_list_ = list1.Union(list2).ToList();
+                }
             }
         }
 
@@ -162,6 +204,9 @@ public class Main : MonoBehaviour
         {
             TryDestroyGem(cell);
         }
+
+        OnScoreChanged?.Invoke(this, EventArgs.Empty);
+
         return true;
     }
 
@@ -215,7 +260,7 @@ public class Main : MonoBehaviour
                 GridCell cell = grid_.GetValue(x, y);
                 if (!cell.HasCellItem())
                 {
-                    GemSO gem_so = gem_so_list_[UnityEngine.Random.Range(0, gem_so_list_.Count)];
+                    GemSO gem_so = gem_so_list_[UnityEngine.Random.Range(0, gem_so_list_.Count-1)]; //no immoveable when spawning new
                     Gem gem = new Gem(gem_so, x, y);
                     cell.SetCellItem(gem);
 
@@ -236,6 +281,10 @@ public class Main : MonoBehaviour
         {
             return null;
         }
+        if (gem_so.is_immovable)
+        {
+            return null;
+        }
 
         // RIGHT
         int matches_right = 0;
@@ -246,7 +295,7 @@ public class Main : MonoBehaviour
                 break;
             }
             GemSO next_gem_so = GetGemSOAtCoords(x + i, y);
-            if (next_gem_so != gem_so)
+            if (next_gem_so != gem_so || next_gem_so.is_immovable)
             {
                 break;
             }
@@ -263,7 +312,7 @@ public class Main : MonoBehaviour
                 break;
             }
             GemSO next_gem_so = GetGemSOAtCoords(x - i, y);
-            if (next_gem_so != gem_so)
+            if (next_gem_so != gem_so || next_gem_so.is_immovable)
             {
                 break;
             }
@@ -279,7 +328,7 @@ public class Main : MonoBehaviour
                 break;
             }
             GemSO next_gem_so = GetGemSOAtCoords(x, y + i);
-            if (next_gem_so != gem_so)
+            if (next_gem_so != gem_so || next_gem_so.is_immovable)
             {
                 break;
             }
@@ -295,7 +344,7 @@ public class Main : MonoBehaviour
                 break;
             }
             GemSO next_gem_so = GetGemSOAtCoords(x, y - i);
-            if (next_gem_so != gem_so)
+            if (next_gem_so != gem_so || next_gem_so.is_immovable)
             {
                 break;
             }

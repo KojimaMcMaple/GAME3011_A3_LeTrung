@@ -12,8 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f8d62daf66bc773449c97840ba40e479, type: 3}
   m_Name: GemPrism
   m_EditorClassIdentifier: 
-  name_: GemPrism
-  prefab_: {fileID: 1949809273703782672, guid: 16ebf79ba5b715f41b9ee8bd9c0e2f19, type: 3}
-  sprite_: {fileID: 0}
-  mat_: {fileID: 0}
-  anim_: {fileID: 0}
+  gem_name: Prism
+  prefab: {fileID: 1949809273703782672, guid: 16ebf79ba5b715f41b9ee8bd9c0e2f19, type: 3}
+  sprite: {fileID: 0}
+  mat: {fileID: 0}
+  anim: {fileID: 0}
+  is_immovable: 0
