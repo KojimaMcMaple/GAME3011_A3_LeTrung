@@ -17,8 +17,12 @@ public class View : MonoBehaviour
     private Transform cam_;
     private int start_drag_x_;
     private int start_drag_y_;
+    private int dest_drag_x_;
+    private int dest_drag_y_;
 
     private Action OnEndBusyAction;
+
+    private VfxManager vfx_manager_;
 
     public enum State
     {
@@ -28,11 +32,15 @@ public class View : MonoBehaviour
         kGameOver
     }
 
-    private void Start()
+    private void Awake()
     {
         state_ = State.kBusy;
         cam_ = Camera.main.transform;
+        vfx_manager_ = FindObjectOfType<VfxManager>();
+    }
 
+    private void Start()
+    {
         Init(FindObjectOfType<Main>(), FindObjectOfType<Main>().GetMainGrid());
     }
 
@@ -59,40 +67,52 @@ public class View : MonoBehaviour
                     Vector2Int coords = grid_.GetGridCoords(world_pos);
                     start_drag_x_ = coords.x;
                     start_drag_y_ = coords.y;
+
+                    vfx_manager_.GetVfx(new Vector3(start_drag_x_, start_drag_y_), GlobalEnums.VfxType.HIT);
                 }
 
                 if (Input.GetMouseButtonUp(0))
                 {
                     Vector3 world_pos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
                     Vector2Int coords = grid_.GetGridCoords(world_pos);
-                    int dest_x = coords.x;
-                    int dest_y = coords.y;
+                    dest_drag_x_ = coords.x;
+                    dest_drag_y_ = coords.y;
 
-                    if (dest_x != start_drag_x_)
+                    if (dest_drag_x_ != start_drag_x_)
                     {
-                        dest_y = start_drag_y_;
-                        if (dest_x < start_drag_x_)
+                        dest_drag_y_ = start_drag_y_;
+                        if (dest_drag_x_ < start_drag_x_)
                         {
-                            dest_x = start_drag_x_ - 1;
+                            dest_drag_x_ = start_drag_x_ - 1;
                         }
                         else
                         {
-                            dest_x = start_drag_x_ + 1;
+                            dest_drag_x_ = start_drag_x_ + 1;
                         }
                     }
                     else
                     {
-                        dest_x = start_drag_x_;
-                        if (dest_y < start_drag_y_)
+                        dest_drag_x_ = start_drag_x_;
+                        if (dest_drag_y_ < start_drag_y_)
                         {
-                            dest_y = start_drag_y_ - 1;
+                            dest_drag_y_ = start_drag_y_ - 1;
                         }
                         else
                         {
-                            dest_y = start_drag_y_ + 1;
+                            dest_drag_y_ = start_drag_y_ + 1;
                         }
                     }
-                    model_.TrySwapGridCells(start_drag_x_, start_drag_y_, dest_x, dest_y);
+
+                    if (model_.TrySwapGridCells(start_drag_x_, start_drag_y_, dest_drag_x_, dest_drag_y_))
+                    {
+                        SetBusyState(.5f, () => state_ = State.kProcessing);
+                    }
+                }
+                break;
+            case State.kProcessing:
+                if (model_.TryProcessMatches(start_drag_x_, start_drag_y_, dest_drag_x_, dest_drag_y_))
+                {
+                    SetBusyState(.5f, () => state_ = State.kAvailable);
                 }
                 break;
         }
@@ -106,8 +126,9 @@ public class View : MonoBehaviour
         float cam_offset_y = 1f;
         cam_.position = new Vector3(grid_.GetWidth() *.5f, grid_.GetHeight() * .5f + cam_offset_y, cam_.position.z);
 
-        gem_dict_ = new Dictionary<Main.Gem, GemVisual>();
+        model_.OnGridCellDestroyed += HandleGridCellDestroyedEvent;
 
+        gem_dict_ = new Dictionary<Main.Gem, GemVisual>();
         for (int x = 0; x < grid_.GetWidth(); x++)
         {
             for (int y = 0; y < grid_.GetHeight(); y++)
@@ -156,15 +177,32 @@ public class View : MonoBehaviour
         SetBusyState(0.5f, () => state_ = State.kProcessing);
     }
 
+
+    private void HandleGridCellDestroyedEvent(object sender, System.EventArgs e)
+    {
+        Main.GridCell cell = sender as Main.GridCell;
+        if (cell != null && cell.GetCellItem() != null)
+        {
+            gem_dict_.Remove(cell.GetCellItem());
+        }
+    }
+
+
+
     public class GemVisual
     {
         private Transform transform_;
         private Main.Gem gem_;
+        private VfxManager vfx_manager_; //[TODO] can be made into event
 
         public GemVisual(Transform t, Main.Gem gem)
         {
             transform_ = t;
             gem_ = gem;
+
+            gem_.OnDestroyed += HandleGemDestroyedEvent;
+
+            vfx_manager_ = FindObjectOfType<VfxManager>();
         }
 
         public void DoUpdate()
@@ -173,6 +211,12 @@ public class View : MonoBehaviour
             Vector3 dir = target - transform_.position;
             float speed = 3.5f;
             transform_.position += dir * speed * Time.deltaTime;
+        }
+
+        private void HandleGemDestroyedEvent(object sender, System.EventArgs e)
+        {
+            vfx_manager_.GetVfx(transform_.position, GlobalEnums.VfxType.GEM_CLEAR);
+            Destroy(transform_.gameObject, 1.0f);
         }
     }
 }

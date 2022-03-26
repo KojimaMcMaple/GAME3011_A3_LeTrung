@@ -1,15 +1,20 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 public class Main : MonoBehaviour
 {
+    public event EventHandler OnGridCellDestroyed;
+
     private Grid<GridCell> grid_;
     private int width_;
     private int height_;
     [SerializeField] private List<GemSO> gem_so_list_;
-    public List<GridCell> processing_list;
+    private List<GridCell> processing_list_;
+
+    private int score_;
 
     private void Awake()
     {
@@ -27,6 +32,8 @@ public class Main : MonoBehaviour
                 grid_.GetValue(x,y).SetCellItem(gem);
             }
         }
+
+        score_ = 0;
     }
 
     public Grid<GridCell> GetMainGrid()
@@ -41,6 +48,22 @@ public class Main : MonoBehaviour
             return false;
         }
         return true;
+    }
+
+    private GemSO GetGemSOAtCoords(int x, int y)
+    {
+        if (!IsValidCoords(x, y))
+        {
+            return null;
+        }
+        GridCell cell = grid_.GetValue(x, y);
+        return cell.GetCellItem().GetGemSO();
+    }
+
+    public bool HasMatch(int x, int y)
+    {
+        List<GridCell> result = GetMatchesAtCoords(x, y);
+        return result != null && result.Count > 2;
     }
 
     public void SwapGridCells(int start_x, int start_y, int dest_x, int dest_y)
@@ -90,23 +113,34 @@ public class Main : MonoBehaviour
         return has_match;
     }
 
-    public bool HasMatch(int x, int y)
+    public bool TryProcessMatches(int start_x, int start_y, int dest_x, int dest_y)
     {
-        List<GridCell> result = GetMatchesAtCoords(x, y);
-        return result != null && result.Count > 2;
-    }
+        processing_list_ = new List<GridCell>();
+        List<GridCell> list1 = GetMatchesAtCoords(start_x, start_y);
+        List<GridCell> list2 = GetMatchesAtCoords(dest_x, dest_y);
+        processing_list_ = list1.Union(list2).ToList();
 
-    private GemSO GetGemSOAtCoords(int x, int y)
-    {
-        if (!IsValidCoords(x, y))
+        foreach (GridCell cell in processing_list_)
         {
-            return null;
+            TryDestroyGem(cell);
         }
-        GridCell cell = grid_.GetValue(x, y);
-        return cell.GetCellItem().GetGemSO();
+
+        return true;
     }
 
-    public List<GridCell> GetMatchesAtCoords(int x, int y)
+    private void TryDestroyGem(GridCell cell)
+    {
+        if (cell.HasCellItem())
+        {
+            cell.DestroyCellItem();
+            OnGridCellDestroyed?.Invoke(cell, EventArgs.Empty);
+            cell.ResetCellItem();
+
+            score_ += 100;
+        }
+    }
+
+    public List<GridCell> GetMatchesAtCoords(int x, int y) //main check
     {
         GemSO gem_so = GetGemSOAtCoords(x, y);
         if (gem_so == null)
@@ -232,10 +266,22 @@ public class Main : MonoBehaviour
         {
             return cell_item_;
         }
-
         public void SetCellItem(Gem cell_item)
         {
             cell_item_ = cell_item;
+            grid_.DoTriggerGridObjChanged(x_, y_);
+        }
+        public bool HasCellItem()
+        {
+            return cell_item_ != null;
+        }
+        public void ResetCellItem()
+        {
+            cell_item_ = null;
+        }
+        public void DestroyCellItem()
+        {
+            cell_item_?.Destroy();
             grid_.DoTriggerGridObjChanged(x_, y_);
         }
 
@@ -248,12 +294,10 @@ public class Main : MonoBehaviour
         {
             return x_;
         }
-
         public int GetY()
         {
             return y_;
         }
-
         public Vector3 GetWorldPos()
         {
             return grid_.GetWorldPos(x_, y_);
