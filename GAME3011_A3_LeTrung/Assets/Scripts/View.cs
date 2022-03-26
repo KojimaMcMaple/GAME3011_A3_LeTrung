@@ -5,8 +5,9 @@ using UnityEngine;
 
 public class View : MonoBehaviour
 {
-    [SerializeField] private Transform gem_visual_template;
-    [SerializeField] private Transform cell_visual_template;
+    [SerializeField] private Transform gem_visual_template_;
+    [SerializeField] private Transform cell_visual_template_;
+    [SerializeField] private float start_pos_y_ = 14f;
 
     private Main model_;
     private Grid<Main.GridCell> grid_;
@@ -34,13 +35,13 @@ public class View : MonoBehaviour
 
     private void Awake()
     {
-        state_ = State.kBusy;
         cam_ = Camera.main.transform;
         vfx_manager_ = FindObjectOfType<VfxManager>();
     }
 
     private void Start()
     {
+        state_ = State.kBusy;
         Init(FindObjectOfType<Main>(), FindObjectOfType<Main>().GetMainGrid());
     }
 
@@ -105,14 +106,26 @@ public class View : MonoBehaviour
 
                     if (model_.TrySwapGridCells(start_drag_x_, start_drag_y_, dest_drag_x_, dest_drag_y_))
                     {
-                        SetBusyState(.5f, () => state_ = State.kProcessing);
+                        SetBusyState(0.5f, () => state_ = State.kProcessing);
                     }
                 }
                 break;
             case State.kProcessing:
-                if (model_.TryProcessMatches(start_drag_x_, start_drag_y_, dest_drag_x_, dest_drag_y_))
+                if (model_.TryProcessAllMatches())
                 {
-                    SetBusyState(.5f, () => state_ = State.kAvailable);
+                    SetBusyState(0.33f, () =>
+                    {
+                        model_.DoGemsFall();
+                        SetBusyState(0.33f, () =>
+                        {
+                            model_.DoSpawnNewGems();
+                            SetBusyState(0.5f, () => state_ = (State.kProcessing));
+                        });
+                    });
+                }
+                else
+                {
+                    SetBusyState(0.5f, () => state_ = (State.kAvailable));
                 }
                 break;
         }
@@ -123,10 +136,11 @@ public class View : MonoBehaviour
         model_ = model;
         grid_ = grid;
 
-        float cam_offset_y = 1f;
+        float cam_offset_y = 0.1f;
         cam_.position = new Vector3(grid_.GetWidth() *.5f, grid_.GetHeight() * .5f + cam_offset_y, cam_.position.z);
 
         model_.OnGridCellDestroyed += HandleGridCellDestroyedEvent;
+        model_.OnNewGemSpawned += HandleNewGemsSpawnedEvent;
 
         gem_dict_ = new Dictionary<Main.Gem, GemVisual>();
         for (int x = 0; x < grid_.GetWidth(); x++)
@@ -136,23 +150,36 @@ public class View : MonoBehaviour
                 Main.GridCell cell = grid_.GetValue(x, y);
                 Main.Gem gem = cell.GetCellItem();
 
-                Vector3 position = grid_.GetWorldPos(x, y);
-                position = new Vector3(position.x, 13f); //move gem way up at the start
+                CreateGemVisualAtWorldPos(grid_.GetWorldPos(x, y), gem);
 
-                Transform scene_gem = Instantiate(gem_visual_template, position, Quaternion.identity);
-                scene_gem.Find("Sprite").GetComponent<SpriteRenderer>().sprite = gem.GetGemSO().prefab_.GetComponent<SpriteRenderer>().sprite;
-                scene_gem.Find("Sprite").GetComponent<SpriteRenderer>().material = gem.GetGemSO().prefab_.GetComponent<SpriteRenderer>().sharedMaterial;
-                scene_gem.Find("Sprite").GetComponent<Animator>().runtimeAnimatorController = gem.GetGemSO().prefab_.GetComponent<Animator>().runtimeAnimatorController;
-
-                GemVisual gem_visual = new GemVisual(scene_gem, gem);
-
-                gem_dict_[gem] = gem_visual;
-
-                Instantiate(cell_visual_template, grid_.GetWorldPos(x, y), Quaternion.identity);
+                Instantiate(cell_visual_template_, grid_.GetWorldPos(x, y), Quaternion.identity);
             }
         }
 
-        SetBusyState(.5f, () => state_ = State.kAvailable);
+        SetBusyState(0.5f, () => state_ = State.kProcessing);
+    }
+
+    /// <summary>
+    /// Instantiate gem_visual_template_ at pos and link new GemVisual to gem
+    /// </summary>
+    /// <param name="pos"></param>
+    /// <param name="gem"></param>
+    /// <returns></returns>
+    private Transform CreateGemVisualAtWorldPos(Vector3 pos, Main.Gem gem)
+    {
+        Vector3 position = pos;
+        position = new Vector3(position.x, start_pos_y_); //move gem way up at the start
+
+        Transform scene_gem = Instantiate(gem_visual_template_, position, Quaternion.identity);
+        scene_gem.Find("Sprite").GetComponent<SpriteRenderer>().sprite = gem.GetGemSO().prefab_.GetComponent<SpriteRenderer>().sprite;
+        scene_gem.Find("Sprite").GetComponent<SpriteRenderer>().material = gem.GetGemSO().prefab_.GetComponent<SpriteRenderer>().sharedMaterial;
+        scene_gem.Find("Sprite").GetComponent<Animator>().runtimeAnimatorController = gem.GetGemSO().prefab_.GetComponent<Animator>().runtimeAnimatorController;
+
+        GemVisual gem_visual = new GemVisual(scene_gem, gem);
+
+        gem_dict_[gem] = gem_visual;
+
+        return scene_gem;
     }
 
     private void DoUpdateView()
@@ -187,18 +214,25 @@ public class View : MonoBehaviour
         }
     }
 
+    private void HandleNewGemsSpawnedEvent(object sender, Main.OnNewGemSpawnedEventArgs e)
+    {
+        CreateGemVisualAtWorldPos(e.cell.GetWorldPos(), e.gem);
+    }
+
 
 
     public class GemVisual
     {
         private Transform transform_;
         private Main.Gem gem_;
+        private bool is_destroyed;
         private VfxManager vfx_manager_; //[TODO] can be made into event
 
         public GemVisual(Transform t, Main.Gem gem)
         {
             transform_ = t;
             gem_ = gem;
+            is_destroyed = false;
 
             gem_.OnDestroyed += HandleGemDestroyedEvent;
 
@@ -207,16 +241,25 @@ public class View : MonoBehaviour
 
         public void DoUpdate()
         {
+            if (is_destroyed)
+            {
+                return;
+            }
             Vector3 target = gem_.GetWorldPos();
             Vector3 dir = target - transform_.position;
-            float speed = 3.5f;
+            float speed = 4.5f;
             transform_.position += dir * speed * Time.deltaTime;
         }
 
         private void HandleGemDestroyedEvent(object sender, System.EventArgs e)
         {
+            is_destroyed = true;
             vfx_manager_.GetVfx(transform_.position, GlobalEnums.VfxType.GEM_CLEAR);
-            Destroy(transform_.gameObject, 1.0f);
+            transform_.GetComponent<Rigidbody2D>().isKinematic = false;
+            transform_.GetComponent<Rigidbody2D>().bodyType = RigidbodyType2D.Dynamic;
+            transform_.GetComponent<Rigidbody2D>().AddForce(new Vector2(UnityEngine.Random.Range(-0.5f, 0.5f), 0.5f).normalized * UnityEngine.Random.Range(4.8f, 12.8f), ForceMode2D.Impulse);
+            transform_.GetComponent<Rigidbody2D>().AddTorque(UnityEngine.Random.Range(-2.5f, 2.5f), ForceMode2D.Impulse);
+            Destroy(transform_.gameObject, 3.0f);
         }
     }
 }

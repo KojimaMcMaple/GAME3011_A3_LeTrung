@@ -6,7 +6,14 @@ using UnityEngine;
 
 public class Main : MonoBehaviour
 {
-    public event EventHandler OnGridCellDestroyed;
+    public event EventHandler OnGridCellDestroyed; //event to send command from model to view
+    public event EventHandler<OnNewGemSpawnedEventArgs> OnNewGemSpawned; //event to send command from model to view
+
+    public class OnNewGemSpawnedEventArgs : EventArgs
+    {
+        public Gem gem;
+        public GridCell cell;
+    }
 
     private Grid<GridCell> grid_;
     private int width_;
@@ -113,18 +120,48 @@ public class Main : MonoBehaviour
         return has_match;
     }
 
-    public bool TryProcessMatches(int start_x, int start_y, int dest_x, int dest_y)
+    public bool TryProcessMatchesAtCoords(int start_x, int start_y, int dest_x, int dest_y)
     {
         processing_list_ = new List<GridCell>();
         List<GridCell> list1 = GetMatchesAtCoords(start_x, start_y);
         List<GridCell> list2 = GetMatchesAtCoords(dest_x, dest_y);
         processing_list_ = list1.Union(list2).ToList();
 
+        if (processing_list_.Count == 0)
+        {
+            return false;
+        }
+
         foreach (GridCell cell in processing_list_)
         {
             TryDestroyGem(cell);
         }
+        return true;
+    }
 
+    public bool TryProcessAllMatches()
+    {
+        processing_list_ = new List<GridCell>();
+
+        for (int x = 0; x < width_; x++)
+        {
+            for (int y = 0; y < height_; y++)
+            {
+                List<GridCell> list1 = GetMatchesAtCoords(x, y);
+                List<GridCell> list2 = processing_list_;
+                processing_list_ = list1.Union(list2).ToList();
+            }
+        }
+
+        if (processing_list_.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (GridCell cell in processing_list_)
+        {
+            TryDestroyGem(cell);
+        }
         return true;
     }
 
@@ -134,9 +171,61 @@ public class Main : MonoBehaviour
         {
             cell.DestroyCellItem();
             OnGridCellDestroyed?.Invoke(cell, EventArgs.Empty);
-            cell.ResetCellItem();
+            cell.ClearCellItem();
 
             score_ += 100;
+        }
+    }
+
+    public void DoGemsFall()
+    {
+        for (int x = 0; x < width_; x++)
+        {
+            for (int y = 0; y < height_; y++)
+            {
+                GridCell cell = grid_.GetValue(x, y);
+                if (cell.HasCellItem())
+                {
+                    for (int i = y-1; i >=0; i--)
+                    {
+                        GridCell cell_below = grid_.GetValue(x, i);
+                        if (!cell_below.HasCellItem()) //move cell down
+                        {
+                            cell.GetCellItem().SetGemCoords(x, i);
+                            cell_below.SetCellItem(cell.GetCellItem());
+                            cell.ClearCellItem();
+                            cell = cell_below;
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    public void DoSpawnNewGems()
+    {
+        for (int x = 0; x < width_; x++)
+        {
+            for (int y = 0; y < height_; y++)
+            {
+                GridCell cell = grid_.GetValue(x, y);
+                if (!cell.HasCellItem())
+                {
+                    GemSO gem_so = gem_so_list_[UnityEngine.Random.Range(0, gem_so_list_.Count)];
+                    Gem gem = new Gem(gem_so, x, y);
+                    cell.SetCellItem(gem);
+
+                    OnNewGemSpawned?.Invoke(gem, new OnNewGemSpawnedEventArgs
+                    {
+                        gem = gem,
+                        cell = cell,
+                    });
+                }
+            }
         }
     }
 
@@ -275,7 +364,7 @@ public class Main : MonoBehaviour
         {
             return cell_item_ != null;
         }
-        public void ResetCellItem()
+        public void ClearCellItem()
         {
             cell_item_ = null;
         }
