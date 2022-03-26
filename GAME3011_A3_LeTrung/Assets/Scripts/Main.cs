@@ -8,13 +8,22 @@ public class Main : MonoBehaviour
 {
     public event EventHandler OnGridCellDestroyed; //event to send command from model to view
     public event EventHandler<OnNewGemSpawnedEventArgs> OnNewGemSpawned; //event to send command from model to view
+    public event EventHandler<OnBombSpawnedEventArgs> OnBombSpawned; //event to send command from model to view
     public event EventHandler OnScoreChanged;
     public event EventHandler OnTimerChanged;
+    public event EventHandler OnWin;
+    public event EventHandler OnLoss;
 
     public class OnNewGemSpawnedEventArgs : EventArgs
     {
         public Gem gem;
         public GridCell cell;
+    }
+
+    public class OnBombSpawnedEventArgs : EventArgs
+    {
+        public int x;
+        public int y;
     }
 
     private Grid<GridCell> grid_;
@@ -24,9 +33,10 @@ public class Main : MonoBehaviour
     private List<GridCell> processing_list_;
 
     private int score_;
-    private float timer_ = 360f;
+    private float timer_ = 300f;
     private int max_immoveables_ = 5;
     private int num_immoveables_ = 0;
+    [SerializeField] private bool can_spawn_bomb_ = false;
 
     private void Awake()
     {
@@ -66,6 +76,10 @@ public class Main : MonoBehaviour
         {
             timer_ -= Time.deltaTime;
             OnTimerChanged?.Invoke(this, EventArgs.Empty);
+        }
+        else
+        {
+            OnLoss?.Invoke(this, EventArgs.Empty);
         }
     }
 
@@ -203,6 +217,33 @@ public class Main : MonoBehaviour
         foreach (GridCell cell in processing_list_)
         {
             TryDestroyGem(cell);
+        }
+
+        if (can_spawn_bomb_)
+        {
+            if (processing_list_.Count > 3 && UnityEngine.Random.Range(0, 100) < 50) //50% chance bomb
+            {
+                int idx = UnityEngine.Random.Range(0, processing_list_.Count);
+                int x = processing_list_[idx].GetX();
+                int y = processing_list_[idx].GetY();
+                List<GridCell> bombed_cells = new List<GridCell>();
+                for (int i = -1; i < 2; i++)
+                {
+                    for (int j = -1; j < 2; j++)
+                    {
+                        bombed_cells.Add(grid_.GetValue(x+i, y+j));
+                    }
+                }
+                foreach (GridCell cell in bombed_cells)
+                {
+                    TryDestroyGem(cell);
+                }
+                OnBombSpawned?.Invoke(this, new OnBombSpawnedEventArgs
+                {
+                    x = x,
+                    y = y,
+                });
+            }
         }
 
         OnScoreChanged?.Invoke(this, EventArgs.Empty);

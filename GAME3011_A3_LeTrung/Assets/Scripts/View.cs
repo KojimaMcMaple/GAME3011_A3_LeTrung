@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 using TMPro;
 
 public class View : MonoBehaviour
@@ -25,6 +27,8 @@ public class View : MonoBehaviour
     [SerializeField] private TMP_Text level_txt_;
     [SerializeField] private TMP_Text timer_txt_;
     [SerializeField] private TMP_Text score_txt_;
+    [SerializeField] private GameObject game_over_panel_;
+    [SerializeField] private Text game_over_txt_;
 
     private Action OnEndBusyAction;
 
@@ -44,6 +48,8 @@ public class View : MonoBehaviour
         cam_ = Camera.main.transform;
         audio_ = GetComponent<AudioSource>();
         vfx_manager_ = FindObjectOfType<VfxManager>();
+        level_txt_.text = SceneManager.GetActiveScene().name;
+        game_over_panel_.SetActive(false);
     }
 
     private void Start()
@@ -153,7 +159,10 @@ public class View : MonoBehaviour
         cam_.position = new Vector3(grid_.GetWidth() *.5f, grid_.GetHeight() * .5f + cam_offset_y, cam_.position.z);
 
         model_.OnGridCellDestroyed += HandleGridCellDestroyedEvent;
-        model_.OnNewGemSpawned += HandleNewGemsSpawnedEvent;
+        model_.OnNewGemSpawned += HandleNewGemSpawnedEvent;
+        model_.OnBombSpawned += HandleBombSpawnedEvent;
+        model_.OnWin += HandleWinEvent;
+        model_.OnLoss += HandleLossEvent;
 
         gem_dict_ = new Dictionary<Main.Gem, GemVisual>();
         for (int x = 0; x < grid_.GetWidth(); x++)
@@ -168,7 +177,7 @@ public class View : MonoBehaviour
                 Instantiate(cell_visual_template_, grid_.GetWorldPos(x, y), Quaternion.identity);
             }
         }
-        SetBusyState(0.5f, () => state_ = State.kProcessing);
+        SetBusyState(1.35f, () => state_ = State.kProcessing);
     }
 
     /// <summary>
@@ -185,7 +194,7 @@ public class View : MonoBehaviour
         Transform scene_gem = Instantiate(gem_visual_template_, position, Quaternion.identity);
         scene_gem.Find("Sprite").GetComponent<SpriteRenderer>().sprite = gem.GetGemSO().prefab.GetComponent<SpriteRenderer>().sprite;
         scene_gem.Find("Sprite").GetComponent<SpriteRenderer>().material = gem.GetGemSO().prefab.GetComponent<SpriteRenderer>().sharedMaterial;
-        if (scene_gem.Find("Sprite").GetComponent<Animator>().runtimeAnimatorController != null)
+        if (gem.GetGemSO().prefab.GetComponent<Animator>().runtimeAnimatorController != null)
         {
             scene_gem.Find("Sprite").GetComponent<Animator>().runtimeAnimatorController = gem.GetGemSO().prefab.GetComponent<Animator>().runtimeAnimatorController;
         }
@@ -224,11 +233,35 @@ public class View : MonoBehaviour
         if (model_.GetScore() >= 10000)
         {
             state_ = State.kGameOver;
+            DoWin();
         }
         else
         {
             state_ = State.kAvailable;
         }
+    }
+
+    private void DoWin()
+    {
+        game_over_panel_.SetActive(true);
+        game_over_txt_.text = "You Win!";
+    }
+
+    public void DoLoadLevel1()
+    {
+        SceneManager.LoadScene("Level1");
+    }
+    public void DoLoadLevel2()
+    {
+        SceneManager.LoadScene("Level2");
+    }
+    public void DoLoadLevel3()
+    {
+        SceneManager.LoadScene("Level3");
+    }
+    public void DoQuit()
+    {
+        Application.Quit();
     }
 
     private void HandleGridCellDestroyedEvent(object sender, System.EventArgs e)
@@ -240,9 +273,14 @@ public class View : MonoBehaviour
         }
     }
 
-    private void HandleNewGemsSpawnedEvent(object sender, Main.OnNewGemSpawnedEventArgs e)
+    private void HandleNewGemSpawnedEvent(object sender, Main.OnNewGemSpawnedEventArgs e)
     {
         CreateGemVisualAtWorldPos(e.cell.GetWorldPos(), e.gem);
+    }
+
+    private void HandleBombSpawnedEvent(object sender, Main.OnBombSpawnedEventArgs e)
+    {
+        vfx_manager_.GetVfx(new Vector3(e.x, e.y), GlobalEnums.VfxType.BOMB);
     }
 
     private void HandleScoreChangedEvent(object sender, System.EventArgs e)
@@ -254,6 +292,19 @@ public class View : MonoBehaviour
     private void HandleTimerChangedEvent(object sender, System.EventArgs e)
     {
         timer_txt_.text = "Timer: " + model_.GetTimer().ToString();
+    }
+    
+    private void HandleWinEvent(object sender, System.EventArgs e)
+    {
+        DoWin();
+        Time.timeScale = 0.0f;
+    }
+
+    private void HandleLossEvent(object sender, System.EventArgs e)
+    {
+        game_over_panel_.SetActive(true);
+        game_over_txt_.text = "Time's Up";
+        Time.timeScale = 0.0f;
     }
 
 
